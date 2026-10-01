@@ -1,7 +1,7 @@
 """Claude API token manager implementation for the Claude API plugin."""
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Protocol, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 import httpx
 
@@ -53,6 +53,7 @@ class ClaudeApiTokenManager(EnhancedTokenManager[ClaudeCredentials]):
             storage = ClaudeOAuthStorage()
         super().__init__(storage)
         self._profile_cache: ClaudeProfileInfo | None = None
+        self._plan_from_profile = False  # load_credentials filled a missing plan in
         self.oauth_provider = oauth_provider
 
         # Create default HTTP client if not provided; track ownership
@@ -297,6 +298,7 @@ class ClaudeApiTokenManager(EnhancedTokenManager[ClaudeCredentials]):
                 try:
                     new_sub = self._derive_subscription_type(profile)
                     if new_sub != sub:
+                        self._plan_from_profile = True
                         creds.claude_ai_oauth.subscription_type = new_sub
                         await self.save_credentials(creds)
                         logger.info(
@@ -312,6 +314,24 @@ class ClaudeApiTokenManager(EnhancedTokenManager[ClaudeCredentials]):
                     )
 
         return creds
+
+    async def get_auth_status(self) -> dict[str, Any]:
+        """The stored credential's status with the plan it names itself.
+
+        `subscription_type` is "pro" or "max", else None. One observation: the same
+        load gives the token's life and its plan. It is read before load_credentials
+        fills a missing plan from the separate profile (~/.claude/.account.json),
+        which may describe another account; a plan this process filled in from it
+        is named as none. No refresh, login or call.
+        """
+        credentials = await super().load_credentials()
+        status = self.auth_status_of(credentials)
+        oauth = getattr(credentials, "claude_ai_oauth", None)
+        own = getattr(oauth, "subscription_type", None)
+        plan = str(own).strip().lower() if own is not None else ""
+        named = plan in ("pro", "max") and not self._plan_from_profile
+        status["subscription_type"] = plan if named else None
+        return status
 
     def get_account_id(self, credentials: ClaudeCredentials) -> str | None:
         """Get account ID from credentials.

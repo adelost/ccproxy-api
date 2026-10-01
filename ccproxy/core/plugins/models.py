@@ -31,6 +31,10 @@ class AuthHealth(BaseModel):
     account_id: str | None = Field(default=None, description="Associated account id")
     expires_at: str | None = Field(default=None, description="Token expiry ISO time")
     error: str | None = Field(default=None, description="Auth error or reason text")
+    subscription_type: str | None = Field(
+        default=None,
+        description="The plan the loaded credential names itself, 'pro' or 'max'; None when it names no such plan",
+    )
 
 
 class ConfigHealth(BaseModel):

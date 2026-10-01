@@ -104,6 +104,7 @@ async def claude_api_health_check(
                 ),
                 account_id=auth_raw.get("account_id"),
                 expires_at=auth_raw.get("expires_at"),
+                subscription_type=auth_raw.get("subscription_type"),
                 error=(
                     None if auth_raw.get("authenticated") else auth_raw.get("reason")
                 ),

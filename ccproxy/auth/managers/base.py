@@ -308,8 +308,10 @@ class BaseTokenManager(ABC, Generic[CredentialsT]):
         Returns:
             Dictionary with authentication status information
         """
-        credentials = await self.load_credentials()
+        return self.auth_status_of(await self.load_credentials())
 
+    def auth_status_of(self, credentials: CredentialsT | None) -> dict[str, Any]:
+        """The authentication status of credentials as loaded, so a caller can read more of the same observation."""
         if not credentials:
             return {
                 "authenticated": False,
